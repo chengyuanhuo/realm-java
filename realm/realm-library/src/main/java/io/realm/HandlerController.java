@@ -258,7 +258,6 @@ final class HandlerController implements Handler.Callback {
     }
 
     void notifyAllListeners() {
-        notifyGlobalListeners();
         notifyTypeBasedListeners();
 
         // empty async RealmObject shouldn't block the realm to advance
@@ -268,6 +267,12 @@ final class HandlerController implements Handler.Callback {
         if (!realm.isClosed() && threadContainsAsyncEmptyRealmObject()) {
             updateAsyncEmptyRealmObject();
         }
+        // It is very important to notify the global listeners at last.
+        // We don't sync RealmResults in realmChanged, instead, they are synced in notifySyncRealmResultsCallbacks.
+        // This is because of we need to compare the table view version to decide if it changes. Thus, we cannot sync
+        // the RealmResults together with advance read - it will fail the result's listener to be called.
+        // NotificationTest.callingOrdersOfListeners will fail if orders change.
+        notifyGlobalListeners();
     }
 
     private void notifyTypeBasedListeners() {
